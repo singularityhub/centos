@@ -29,7 +29,7 @@ echo "sregistry Version: ${sregistry_version}"
 # Install Singularity
 
 wget https://dl.google.com/go/go${GO_VERSION}.src.tar.gz && \
-    tar -C /usr/local -xzf go${VERSION}.src.tar.gz && \
+    tar -C /usr/local -xzf go${GO_VERSION}.src.tar.gz && \
     export PATH=$PATH:/usr/local/go/bin && \
     sudo mkdir -p /go && \
     sudo chmod -R 7777 /go
