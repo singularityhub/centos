@@ -26,13 +26,20 @@ pip install sregistry[all]
 sregistry_version=$(sregistry version)
 echo "sregistry Version: ${sregistry_version}"
 
-# Install Singularity
+# Install GoLang
 
-wget https://dl.google.com/go/go${GO_VERSION}.src.tar.gz && \
-    tar -C /usr/local -xzf go${GO_VERSION}.src.tar.gz && \
-    export PATH=$PATH:/usr/local/go/bin && \
+ls
+if [ ! -f "go/api/README" ]
+    then
+        wget https://dl.google.com/go/go${GO_VERSION}.src.tar.gz && \
+        tar -C /usr/local -xzf go${GO_VERSION}.src.tar.gz
+fi
+
+export PATH=$PATH:/usr/local/go/bin && \
     sudo mkdir -p /go && \
     sudo chmod -R 7777 /go
+
+# Install Singularity
 
 export GOPATH=/go && \
     go get -u github.com/golang/dep/cmd/dep && \
