@@ -1,6 +1,7 @@
 # CentOS
 
-This is the official library of CentOS builds for Singularity images hosted on Singularity Hub. The following standard applies:
+This is a library of CentOS builds for Singularity images hosted on Singularity Static Registry. The following standard applies:
 
  - each `Singularity` file corresponds to a build
- - each branch corresponds with a different verison, or tag.
+ - tags are supported based on the extension of the Singularity file, with an extensionless file corresponding to "latest"
+
