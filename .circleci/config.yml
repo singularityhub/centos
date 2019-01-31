@@ -180,9 +180,9 @@ jobs:
                   cp ~/repo/.templates/TAGS_TEMPLATE.md $NAMESPACE/tags/README.md
               fi
 
-              # Checkout a new branch
-              BRANCH_NAME=update/$NAMESPACE-$(echo "${CIRCLE_SHA1}" | cut -c1-10)
-              git checkout -b "${BRANCH_NAME}"
+              # Checkout a new (or existing) branch
+              BRANCH_NAME=update/$NAMESPACE
+              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME
               git add $NAMESPACE
               git status
               git commit -m '$BRANCH_NAME' --allow-empty
