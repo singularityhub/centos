@@ -3,11 +3,13 @@
 # Check https://circleci.com/docs/2.0/language-python/ for more details
 #
 version: 2
-jobs:
-  build:
-    machine: true
+
+defaults: &defaults
+
+    # Set working directory where repository is cloned
     working_directory: ~/repo
- 
+    machine: true
+
     # Environment Variables
     environment:
 
@@ -18,7 +20,12 @@ jobs:
       - MANIFEST_TEMPLATE: https://raw.githubusercontent.com/singularityhub/registry-org/master/_templates/MANIFEST_TEMPLATE.md
       - TAGS_TEMPLATE: https://raw.githubusercontent.com/singularityhub/registry-org/master/_templates/TAGS_TEMPLATE.md
       - COLLECTION_TEMPLATE: https://raw.githubusercontent.com/singularityhub/registry-org/master/_templates/COLLECTION_TEMPLATE.md
- 
+
+
+
+jobs:
+  build:
+    <<: *defaults  
     steps:
       - checkout
 
@@ -51,20 +58,21 @@ jobs:
           name: Get Templates
           command: |
               echo "Download Manifest, Tags, and Collection Templates!"
-              mkdir -p /tmp/templates
-              wget -O /tmp/templates/MANIFEST_TEMPLATE.md ${MANIFEST_TEMPLATE}        
-              wget -O /tmp/templates/TAGS_TEMPLATE.md ${TAGS_TEMPLATE} 
-              wget -O /tmp/templates/COLLECTION_TEMPLATE.md ${COLLECTION_TEMPLATE}
-              ls /tmp/templates
+              mkdir -p ~/repo/.templates
+              wget -O ~/repo/.templates/MANIFEST_TEMPLATE.md ${MANIFEST_TEMPLATE}        
+              wget -O ~/repo/.templates/TAGS_TEMPLATE.md ${TAGS_TEMPLATE} 
+              wget -O ~/repo/.templates/COLLECTION_TEMPLATE.md ${COLLECTION_TEMPLATE}
+              ls ~/repo/.templates
 
       - run:
           name: Build Containers
           command: |
+            cd ~/repo
             NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
             echo "Container namespace is $NAMESPACE"
-            # Create directory with namespace organiztion
-            mkdir -p /tmp/$NAMESPACE
-            cd ~/repo
+            # Create directory with namespace organization (pr will be based in /tmp/PR)
+            mkdir -p PR/$NAMESPACE
+            MANIFESTS=PR/$NAMESPACE/manifests
             mkdir -p build
             # The repository ID is in the inspect / metadata
             # <meta name="octolytics-dimension-repository_id" content="167740989" />
@@ -89,49 +97,37 @@ jobs:
 
                     # Rename image based on shasum
                     container_name=`sha256sum ${recipe}.sif | awk '{ print $1 }'`
-                    collection_dir=$(dirname $container_dir)
-                    collection_dir=$(dirname $collection_dir)
-                    container_tag=$(basename $container_dir)
-                    mv ${recipe}.sif ${container_dir}/${container_name}.sif
-                    # Create artifact storage that mirrors registry organization
-                    outdir="${container_dir/${HOME}\/repo/}" # vanessa/greeting/
-                    outdir="${outdir/manifests\//}"          # vanessa/greeting/latest
-                    mkdir -p build/$outdir
+
+                    # Get the tag based on the extension
+                    filename=$(basename -- "$recipe")
+                    container_tag="${filename##*.}"
+                    if [ "${container_tag}" == "Singularity" ]; then
+                        container_tag=latest
+                    fi
+
+                    # Create the container (directory for artifacts)
+                    container_dir=${NAMESPACE}/${tag}  # singularityhub/centos/latest
+                    outdir=build/${container_dir}
+                    mkdir -p $outdir
+                    mv ${recipe}.sif $outdir/${container_name}.sif
 
                     echo
                     echo "Successfully built ${recipe}"
-                    echo "   saving to -> build$outdir"
+                    echo "   saving to -> $outdir"
                     echo "   sha256sum -> $container_name"
                     echo "   tag       -> $container_tag"
  
-                    container_size=`du -k "${container_dir}/${container_name}.sif" | cut -f1`
-                    mv "${container_dir}/${container_name}.sif" build/$outdir
+                    container_size=`du -k "${outdir}/${container_name}.sif" | cut -f1`
                     echo "   size       -> $container_size"
 
                     digest=${container_name}
-                    url=${artifacts}/$CIRCLE_NODE_INDEX/singularity-containers$outdir/${container_name}.sif
+                    url=${artifacts}/$CIRCLE_NODE_INDEX/singularity-containers/$container_dir/${container_name}.sif
+
                     # Create the README.md with the MANIFEST template
                     export url digest container_size
-                    envsubst < ~/repo/.circleci/MANIFEST_TEMPLATE.md > $container_dir/README.md
-                    # Add README for container to git (will render into container page)
-                    echo $container_dir/README.md >> .gitadds
-                    ls $container_dir
-                    cat $container_dir/README.md
-                    # Create the collections README, if it doesn't exist
-                    if [ ! -f "$collection_dir/README.md" ]; then
-                        echo "Creating $collection_dir/README.md"
-                        cp ~/repo/.circleci/COLLECTION_TEMPLATE.md $collection_dir/README.md
-                        # Add README for tags to git (will render into tags endpoint)
-                        echo $collection_dir/README.md >> .gitadds
-                    fi
-                    # Create the tags folder, if doesn't exist
-                    if [ ! -f "$collection_dir/tags/README.md" ]; then
-                        echo "Creating $collection_dir for tags"
-                        mkdir -p $collection_dir/tags
-                        cp ~/repo/.circleci/TAGS_TEMPLATE.md $collection_dir/tags/README.md
-                        # Add README for tags to git (will render into tags endpoint)
-                        echo $collection_dir/tags/README.md >> .gitadds
-                    fi
+                    mkdir -p $MANIFESTS/$container_tag
+                    envsubst < ~/repo/.templates/MANIFEST_TEMPLATE.md > $MANIFESTS/$container_tag/README.md
+                    cat $MANIFESTS/$container_tag/README.md
 
                 done
 
@@ -153,30 +149,44 @@ jobs:
           root: ~/
           paths:
             - repo
-
+            
 
   deploy:
-    machine: true
-    working_directory: ~/repo
+    <<: *defaults  
     steps:
       - attach_workspace:
           at: ~/
       - run:
           name: Update if branch is not master
           command: |
-             echo "Detected push to master, updating GitHub pages!"    
-             git config user.name "${CIRCLE_USERNAME}"
-             git config user.email "${CIRCLE_USERNAME}@users.noreply.github.com"
-             cd /tmp && git clone git@github.com:${REGISTRY_BASE}.git
-             cd $(basename ${REGISTRY_BASE})
+              echo "Detected push to master, updating GitHub pages!"    
+              NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
+              git config user.name "${CIRCLE_USERNAME}"
+              git config user.email "${CIRCLE_USERNAME}@users.noreply.github.com"
+              cd /tmp && git clone git@github.com:${REGISTRY_BASE}.git
+              cd $(basename ${REGISTRY_BASE})
 
-             #git checkout master
-             #git pull origin master
-             #for file in $(cat .gitadds); do
-             #   git add $file
-             #done
-             #git commit -m 'Automated deployment to Github Pages' --allow-empty
-             #git push origin master
+              # Copy the entire generated content to registry
+              cp -R ~/repo/PR/* .
+                
+              # Generate the collection README, if doesn't exist
+              if [ ! -f "$NAMESPACE/README.md" ]; then
+                  cp ~/repo/.templates/COLLECTION_TEMPLATE.md $NAMESPACE/README.md
+              fi
+
+              # Generate the tags file, if it doesns't exist
+              if [ ! -f "$NAMESPACE/tags/README.md" ]; then
+                  mkdir -p $NAMESPACE/tags
+                  cp ~/repo/.templates/TAGS_TEMPLATE.md $NAMESPACE/tags/README.md
+              fi
+
+              # Checkout a new branch
+              BRANCH_NAME=update/$NAMESPACE-$(echo "${CIRCLE_SHA1}" | cut -c1-10)
+              git checkout -b "${BRANCH_NAME}"
+              git add $NAMESPACE
+              git status
+              git commit -m '$BRANCH_NAME' --allow-empty
+              git push origin ${BRANCH_NAME}
 
       - store_artifacts:
           path: ~/repo/build
