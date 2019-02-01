@@ -168,6 +168,11 @@ jobs:
               git config user.name "${CIRCLE_USERNAME}"
               git config user.email "${CIRCLE_USERNAME}@users.noreply.github.com"
 
+              # Checkout a new (or existing) branch
+              BRANCH_NAME=update/$NAMESPACE
+              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME
+              git pull origin ${BRANCH_NAME} || echo "No branch ${BRANCH_NAME} exists yet."
+
               # Copy the entire generated content to registry
               cp -R ~/repo/PR/* .
                 
@@ -182,13 +187,9 @@ jobs:
                   cp ~/repo/.templates/TAGS_TEMPLATE.md $NAMESPACE/tags/README.md
               fi
 
-              # Checkout a new (or existing) branch
-              BRANCH_NAME=update/$NAMESPACE
-              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME
               git add $NAMESPACE
               git status
               git commit -m '$BRANCH_NAME' --allow-empty
-              git pull origin ${BRANCH_NAME} || echo "No branch ${BRANCH_NAME} exists yet."
               git push origin ${BRANCH_NAME}
 
       - store_artifacts:
