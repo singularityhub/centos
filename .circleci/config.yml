@@ -184,10 +184,11 @@ jobs:
 
               # Checkout a new (or existing) branch
               BRANCH_NAME=update/$NAMESPACE
-              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME && git pull origin ${BRANCH_NAME}
+              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME
               git add $NAMESPACE
               git status
               git commit -m '$BRANCH_NAME' --allow-empty
+              git pull origin ${BRANCH_NAME} || echo "No branch ${BRANCH_NAME} exists yet."
               git push origin ${BRANCH_NAME}
 
       - store_artifacts:
