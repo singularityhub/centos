@@ -184,7 +184,7 @@ jobs:
 
               # Checkout a new (or existing) branch
               BRANCH_NAME=update/$NAMESPACE
-              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME
+              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME && git pull ${BRANCH_NAME}
               git add $NAMESPACE
               git status
               git commit -m '$BRANCH_NAME' --allow-empty
