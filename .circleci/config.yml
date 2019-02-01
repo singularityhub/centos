@@ -121,7 +121,7 @@ jobs:
                     echo "   size       -> $container_size"
 
                     digest=${container_name}
-                    url=${artifacts}/$CIRCLE_NODE_INDEX/singularity-containers/$container_dir/${container_name}.sif
+                    url=${artifacts}/$CIRCLE_NODE_INDEX/singularity-containers/$container_dir${container_name}.sif
 
                     # Create the README.md with the MANIFEST template
                     export url digest container_size
@@ -168,6 +168,11 @@ jobs:
               git config user.name "${CIRCLE_USERNAME}"
               git config user.email "${CIRCLE_USERNAME}@users.noreply.github.com"
 
+              # Checkout a new (or existing) branch
+              BRANCH_NAME=update/$NAMESPACE
+              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME
+              git pull origin ${BRANCH_NAME} || echo "No branch ${BRANCH_NAME} exists yet."
+
               # Copy the entire generated content to registry
               cp -R ~/repo/PR/* .
                 
@@ -182,9 +187,6 @@ jobs:
                   cp ~/repo/.templates/TAGS_TEMPLATE.md $NAMESPACE/tags/README.md
               fi
 
-              # Checkout a new (or existing) branch
-              BRANCH_NAME=update/$NAMESPACE
-              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME
               git add $NAMESPACE
               git status
               git commit -a -m "\"${BRANCH_NAME}\"" --allow-empty
