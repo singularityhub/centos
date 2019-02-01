@@ -27,6 +27,12 @@ singularityhub.github.io/registry-org                       --) the registry int
 singularityhub.github.io/registry-org/singularityhub/centos --) the added container
 ```
 
+This works by way of the repository here (via the continuous integration)
+building the container, uploading it to storage, and then opening (or updating)
+a branch on the registry repository. The registry repository uses a 
+[GitHub Action](https://www.github.com/vsoch/pull-request-action) that will
+open a pull request whenever a branch is pushed.
+
 For this particular example, the container namespace is a bit
 redundant, but if the GitHub username was different from the organization, you
 can see how it would be important to maintain this namespace. I've also thought
